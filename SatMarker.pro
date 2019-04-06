@@ -27,13 +27,18 @@ SOURCES += \
         main.cpp \
         mainwindow.cpp \
     extrascrollarea.cpp \
-    extralabel.cpp
+    extralabel.cpp \
+    rotationalToolLabel.cpp \
+    rectangulartoollabel.cpp \
+    toollabel.cpp
 
 HEADERS += \
         mainwindow.h \
     extrascrollarea.h \
-    extralabel.h \
-    markertype.h
+    markertype.h \
+    rotationalToolLabel.h \
+    rectangulartoollabel.h \
+    toollabel.h
 
 FORMS += \
         mainwindow.ui

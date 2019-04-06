@@ -11,7 +11,7 @@ MainWindow::MainWindow(QWidget *parent) :
       settingsFile=QDir::currentPath() + "/settings.ini";
       scaleFactor=1.0;
       scrollArea = new ExtraScrollArea();
-      label = new ExtraLabel();
+      label = new RotationalToolLabel();
       layout= new QVBoxLayout;
       wid = new QWidget;
       nextButton = new QPushButton("Next Image");

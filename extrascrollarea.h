@@ -1,5 +1,5 @@
-#ifndef EXTRASCROLLAREA_H
-#define EXTRASCROLLAREA_H
+#ifndef RotationalSCROLLAREA_H
+#define RotationalSCROLLAREA_H
 #include <QScrollArea>
 #include <QWheelEvent>
 #include <QPointF>
@@ -9,12 +9,12 @@
 #include <QPainter>
 #include <iostream>
 using namespace std;
-class ExtraScrollArea : public QScrollArea
+class RotationalScrollArea : public QScrollArea
 {
     Q_OBJECT
 
 public:
-    ExtraScrollArea();
+    RotationalScrollArea();
     void wheelEvent(QWheelEvent*);
 signals:
     void wheelUp();
@@ -31,4 +31,4 @@ private:
     void paintEvent(QPaintEvent*) override;
 };
 
-#endif // EXTRASCROLLAREA_H
+#endif // RotationalSCROLLAREA_H

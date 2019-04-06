@@ -13,9 +13,7 @@
 #include <QSettings>
 #include <iostream>
 #include "extrascrollarea.h"
-#include "extralabel.h"
-
-
+#include "rotationalToolLabel.h"
 
 
 namespace Ui {
@@ -53,13 +51,13 @@ private:
     QString getOutputDir();
     double scaleFactor;
     QPixmap pixmap;
-    ExtraLabel* label;
+    RotationalLabel* label;
     QString settingsFile;
     QString inputDirectoryPath;
     QString outputDirectoryPath;
     QPushButton* nextButton;
     QWidget* wid;
-    ExtraScrollArea* scrollArea;
+    RotationalScrollArea* scrollArea;
     QVBoxLayout *layout;
     QStringList * filesList;
     MarkerType marker;
