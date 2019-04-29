@@ -1,0 +1,226 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Mar  3 21:06:55 2019
+
+@author: Luke
+"""
+import requests
+import math
+from PIL import Image
+
+import io
+
+
+class GeoImage:
+   
+    
+    def __init__(self, dims, im, corners_cords):
+        self.pixel_dims = dims #width, height
+        self.image = im
+        self.cords = corners_cords #left upper, left bottom, right bottom, right upper
+        self.geo_dims =[ corners_cords[2][1]-corners_cords[0][1],corners_cords[0][0]-corners_cords[1][0]] #width, height
+  
+    
+    def show(self):
+        self.image.show()
+        
+        
+    def calculatePixelFromCords(self, point_cords): #relativly to left, upper corner - cords[0]
+        y=self.cords[0][0]-point_cords[0]
+        x=point_cords[1]-self.cords[0][1]
+        
+        x=x/self.geo_dims[0]*self.pixel_dims[0]
+        y=y/self.geo_dims[1]*self.pixel_dims[1]
+        
+        if x<0 or x>self.pixel_dims[0] or y<0 or y>self.pixel_dims[1]:
+            print("Cords you have passed are not in covered by this image")
+            return
+        return [x, y]
+    
+    
+    def calculateCordsFromPixels(self, pixel_cords):
+        x=pixel_cords[0]
+        y=pixel_cords[1]
+        if x<0 or x>self.pixel_dims[0] or y<0 or y>self.pixel_dims[1]:
+            print("Cords you have passed are not in covered by this image")
+            return
+    
+        x=x/self.pixel_dims[0]*self.geo_dims[0]+self.cords[0][1]
+        y=self.cords[0][0]-y/self.pixel_dims[1]*self.geo_dims[1]
+        
+        return [y, x]
+    
+    
+    def createSubImage(self, start, end): #start = left upper corner, end = right bottom corner
+        if start[0]<0 or end[0]>self.pixel_dims[0] or start[1]<0 or end[1]>self.pixel_dims[1] or start[0]>end[0] or start[1]>end[1]:
+            print("You cannot crop such an image!")
+            return
+        self.image = self.image.crop((start[0], start[1], end[0], end[1]))
+
+    def save(self, path):
+        self.image.save(path)
+    
+    
+    
+class ImageLoader:
+  
+    
+    def __init__(self):
+        self.image_size = [512, 512]
+        self.center_cords = [486541.90, 639361.65]
+        self.center_chunk = [5366, 7963]        
+        self.chunk_size = 67.734
+        self.zoom = 13 #constant, dependency beetwen zoom and chunks has not been implemented yet
+        self.token = #to set
+        self.headers = [{'Referer': #to set}]
+        self.session = requests.Session()
+        for h in self.headers:
+            self.session.headers.update(h)
+        
+        
+    def getEPSGCords(self, lon, lat):
+       
+        lond = self.getDecimal(lon)
+        latd = self.getDecimal(lat)
+        url = #to set 
+        result = self.session.get(url, stream=True)
+        if result.status_code != 200:
+            print("Error while performing GET request")
+            return
+        t=result.text
+        t=t.split(':')
+        x=t[2]
+        y=t[3]
+        x=x[:x.find(',')]
+        y=y[:y.find('}')]
+        cords=[float(y), float(x)]
+        return cords
+    
+    
+    def getDecimal(self, l):
+        if(len(l)>3):
+            print("Error, lon/lat must contain maximaly three fields")
+            return
+        result=0
+        div=1
+        for i in l:
+            result+=div*i
+            div/=60
+        return str(result)    
+    
+    
+    def calculateChunk(self, cords):
+         if(len(cords)!=2):
+             print("Coordinants are inproper")
+             return
+         x = math.floor((self.center_cords[0]-cords[0])/self.chunk_size+self.center_chunk[0])
+         y = math.floor((cords[1]-self.center_cords[1])/self.chunk_size+self.center_chunk[1])
+         return [x, y]
+     
+        
+    def getChunk(self, chunk):
+        url=+str(self.zoom)+'/'+str(chunk[0])+'/'+str(chunk[1])+'?token='+self.token+'&rfh=1' 
+        result = self.session.get(url, stream=True)
+        if result.status_code != 200:
+            print("Error while performing GET request")
+            return
+        return result.content
+    
+    
+    def loadImage(self, bytes):
+        image=Image.open(io.BytesIO(bytes))
+        return image
+    
+    
+    def calculateLeftUpperCornerCords(self, chunk):
+        if len(chunk)!=2: 
+            print("Argument is not valid chunk!")
+            return
+        x=-((chunk[0]-self.center_chunk[0])*self.chunk_size-self.center_cords[0])
+        y= (chunk[1]-self.center_chunk[1])*self.chunk_size+self.center_cords[1]
+        return [x, y]
+    
+    
+    def getImage(self, start, end):
+        start_cords = self.getEPSGCords(start[0], start[1])
+        end_cords = self.getEPSGCords(end[0], end[1])
+        max_height = math.ceil(abs(start_cords[0]-end_cords[0])/self.chunk_size)*(self.image_size[0])
+        total_width = math.ceil(abs(start_cords[1]-end_cords[1])/self.chunk_size)*(self.image_size[0])
+        start_chunk = self.calculateChunk(start_cords)
+        end_chunk = self.calculateChunk(end_cords)
+
+        new_im = Image.new('RGB', (total_width, max_height))
+      
+        x=end_chunk[0]
+        offset_x=0
+        while(x<=start_chunk[0]):
+            y=start_chunk[1]
+            offset_y=0
+            while(y<=end_chunk[1]):
+                im=self.loadImage(self.getChunk([x, y]))
+                new_im.paste(im, (offset_y, offset_x))
+                y+=1
+                offset_y+=self.image_size[1]
+                
+            x+=1
+            offset_x+=self.image_size[0]
+        corners_cords = self.calculateCornersCords(start, end)
+        image =  GeoImage([total_width, max_height], new_im, corners_cords)
+        pixels = [image.calculatePixelFromCords(image.cords[0]), image.calculatePixelFromCords(image.cords[2])]
+        image.createSubImage(pixels[0], pixels[1])
+        return image
+    def calculateCornersCords(self, start, end):
+       
+        cords=[]
+        
+        #1                            4
+        #
+        #
+        #
+        #
+        #
+        #
+        #
+        #2                           3
+        
+        chunk = self.calculateChunk(self.getEPSGCords(end[0], start[1]))
+        buffer = self.calculateLeftUpperCornerCords(chunk)
+        cords.append(buffer)
+        
+        chunk = self.calculateChunk(self.getEPSGCords(start[0], start[1]))
+        buffer = self.calculateLeftUpperCornerCords(chunk)
+        buffer[0]=buffer[0]-self.chunk_size
+        cords.append(buffer)
+        
+        chunk = self.calculateChunk(self.getEPSGCords(start[0], end[1]))
+        buffer = self.calculateLeftUpperCornerCords(chunk)
+        buffer[0]=buffer[0]-self.chunk_size
+        buffer[1]=buffer[1]+self.chunk_size
+        cords.append(buffer)
+        
+        chunk = self.calculateChunk(self.getEPSGCords(end[0], end[1]))
+        buffer = self.calculateLeftUpperCornerCords(chunk)
+        buffer[1]=buffer[1]+self.chunk_size
+        cords.append(buffer)
+        
+        return cords
+        
+    
+
+
+i = ImageLoader()
+#cords = i.getEPSGCords([52, 45, 34 ], [18, 19, 20])
+#image = i.loadImage(i.getChunk(i.calculateChunk(i.getEPSGCords([50, 19, 29], [19, 6,24]))))
+#image.show()
+#chunks = i.calculateChunk(cords)
+#result = i.getChunk(chunks)
+#image = i.loadImage(i.getChunk([8517, 6014]))
+#image.show()
+path = #to set
+start = [[50, 18, 47], [19, 6, 37]]
+end = [[50, 19,30], [19,7, 20]]
+image=i.getImage(start, end)
+image.save(path+"photo.bmp")
+#print(i.getEPSGCords([50, 19, 10], [19, 6, 12]))
+#print(i.calculateLeftUpperCornerCords(i.calculateChunk(i.getEPSGCords([50, 19, 10], [19, 6, 12]))))
+#image = Image.frombytes('1', (512, 512), i.getChunk(chunks))
