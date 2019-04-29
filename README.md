@@ -6,3 +6,6 @@ In order to do it in an efficient and convenient way, the program allows user ma
 2. Rectangular marking tool - typical marking tool 
 
 The program can be used to label photographical data.
+
+
+The repository contains Python script called SatPhotosManager.py, which was written basing on cURL Python library. The scripts allows user get satellite images of area described with geographical coordinants.
